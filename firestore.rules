@@ -1,0 +1,735 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions (Zero-Trust Security Invariants)
+    // ===============================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && !id.matches('.*[/\\\\].*');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (
+          'email_verified' in request.auth.token &&
+          request.auth.token.email_verified == true &&
+          'email' in request.auth.token &&
+          request.auth.token.email == 'ferhat.krnn65@gmail.com'
+        )
+      );
+    }
+
+    function isNonEmptyString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isStringMax(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function isNullableStringMax(val, maxLen) {
+      return val == null || (val is string && val.size() <= maxLen);
+    }
+
+    function isValidTimestamp(val) {
+      return val is timestamp && val <= request.time;
+    }
+
+    function isNullableTimestamp(val) {
+      return val == null || (val is timestamp && val <= request.time);
+    }
+
+    function isUserChatActive(uid) {
+      return !exists(/databases/$(database)/documents/users/$(uid)) || (
+        get(/databases/$(database)/documents/users/$(uid)).data.isBlocked == false &&
+        get(/databases/$(database)/documents/users/$(uid)).data.canChat == true
+      );
+    }
+
+    function isValidUserCreate(data, userId) {
+      return data.uid == userId
+        && isNonEmptyString(data.fullName, 1, 100)
+        && isStringMax(data.email, 160)
+        && isStringMax(data.partnerName, 100)
+        && data.isBlocked == false
+        && data.isRestricted == false
+        && data.canSubmitQuotes == true
+        && data.canComment == true
+        && data.canUploadMusic == true
+        && data.canChat == true
+        && isStringMax(data.restrictionReason, 300)
+        && (!('restrictedUntil' in data) || data.restrictedUntil == null)
+        && data.isVip == false
+        && isStringMax(data.vipPlanName, 100)
+        && data.isAdFree == false
+        && data.hasUnlimitedBackup == false
+        && data.hasDesignPack == false
+        && data.hasVipBadgeAndAi == false
+        && data.loveCoins is int && data.loveCoins >= 0 && data.loveCoins <= 100
+        && data.unlockedItemIds is list && data.unlockedItemIds.size() <= 100
+        && data.totalCoinPurchases == 0
+        && data.totalVipOrPackPurchases == 0
+        && data.estimatedRevenueTry == 0
+        && isStringMax(data.themeMode, 20)
+        && isStringMax(data.designTheme, 40)
+        && data.dailyNotifEnabled is bool
+        && data.dailyNotifHour is int && data.dailyNotifHour >= 0 && data.dailyNotifHour <= 23
+        && data.dailyNotifMinute is int && data.dailyNotifMinute >= 0 && data.dailyNotifMinute <= 59
+        && isStringMax(data.dailyNotifTone, 30)
+        && isStringMax(data.loveCounterMyName, 80)
+        && isStringMax(data.loveCounterPartnerName, 80)
+        && data.loveCounterStartDate is int
+        && isStringMax(data.loveCounterTitle, 120)
+        && data.redeemedCouponIds is list && data.redeemedCouponIds.size() <= 100
+        && data.doneBucketIds is list && data.doneBucketIds.size() <= 200
+        && data.readBroadcastIds is list && data.readBroadcastIds.size() <= 500
+        && isStringMax(data.ourSongTitle, 120)
+        && isStringMax(data.ourSongArtist, 120)
+        && data.loveStreak is int && data.loveStreak >= 0
+        && isStringMax(data.streakLastDay, 20)
+        && isStringMax(data.todayMoodLabel, 60)
+        && isStringMax(data.todayMoodEmoji, 16)
+        && data.todayMoodScore is int && data.todayMoodScore >= 0 && data.todayMoodScore <= 100
+        && isStringMax(data.todayMoodDate, 20)
+        && isStringMax(data.moodCheckInHistoryJson, 12000)
+        && isStringMax(data.loveLanguageName, 80)
+        && data.missYouTotalCount is int && data.missYouTotalCount >= 0
+        && data.missYouTodayCount is int && data.missYouTodayCount >= 0
+        && isStringMax(data.missYouDay, 20)
+        && data.truthDareCompletedCount is int && data.truthDareCompletedCount >= 0
+        && data.lastSyncAt is int && data.lastSyncAt >= 0
+        && data.syncedNotesCount is int && data.syncedNotesCount >= 0
+        && data.syncedFavsCount is int && data.syncedFavsCount >= 0
+        && data.syncedRemindersCount is int && data.syncedRemindersCount >= 0
+        && isStringMax(data.lastBackupJson, 200000)
+        && isValidTimestamp(data.createdAt)
+        && isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidUserOwnerUpdate(data, prev) {
+      let diff = data.diff(prev);
+      return !diff.affectedKeys().hasAny([
+          'uid', 'email', 'createdAt',
+          'isBlocked', 'isRestricted', 'canSubmitQuotes', 'canComment',
+          'canUploadMusic', 'canChat', 'restrictionReason', 'restrictedUntil'
+        ])
+        && isNonEmptyString(data.fullName, 1, 100)
+        && isStringMax(data.partnerName, 100)
+        && data.loveCoins is int && data.loveCoins >= 0 && data.loveCoins <= 1000000
+        && data.unlockedItemIds is list && data.unlockedItemIds.size() <= 200
+        && data.redeemedCouponIds is list && data.redeemedCouponIds.size() <= 100
+        && data.doneBucketIds is list && data.doneBucketIds.size() <= 200
+        && data.readBroadcastIds is list && data.readBroadcastIds.size() <= 500
+        && isStringMax(data.lastBackupJson, 400000)
+        && isStringMax(data.moodCheckInHistoryJson, 16000)
+        && isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidUserAdminModerationUpdate(data, prev) {
+      let diff = data.diff(prev);
+      return diff.affectedKeys().hasOnly([
+          'isBlocked', 'isRestricted', 'canSubmitQuotes', 'canComment',
+          'canUploadMusic', 'canChat', 'restrictionReason', 'restrictedUntil', 'updatedAt'
+        ])
+        && data.isBlocked is bool
+        && data.isRestricted is bool
+        && data.canSubmitQuotes is bool
+        && data.canComment is bool
+        && data.canUploadMusic is bool
+        && data.canChat is bool
+        && isStringMax(data.restrictionReason, 300)
+        && (!('restrictedUntil' in data) || data.restrictedUntil == null || data.restrictedUntil is int)
+        && isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPublicProfileCreate(data, userId) {
+      return data.uid == userId
+        && isNonEmptyString(data.displayName, 1, 100)
+        && isStringMax(data.partnerName, 100)
+        && (data.role == 'USER' || (data.role == 'ADMIN' && isAdmin()))
+        && (data.isPremium == false || isAdmin())
+        && isStringMax(data.vipPlanName, 100)
+        && data.isBlocked == false
+        && data.isMutedInChat == false
+        && data.sharedQuotesCount is int && data.sharedQuotesCount >= 0
+        && data.receivedHeartsCount is int && data.receivedHeartsCount >= 0
+        && isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNote(data) {
+      return data.keys().hasOnly([
+          'title', 'content', 'author', 'tags', 'voiceAudioPath',
+          'voiceDurationSeconds', 'isFavorite', 'backgroundTheme', 'filterStyle',
+          'isSyncedWithCloud', 'createdAt', 'updatedAt'
+        ])
+        && isNonEmptyString(data.title, 1, 200)
+        && isNonEmptyString(data.content, 1, 5000)
+        && isStringMax(data.author, 100)
+        && isStringMax(data.tags, 300)
+        && (!('voiceAudioPath' in data) || isNullableStringMax(data.voiceAudioPath, 500))
+        && data.voiceDurationSeconds is int && data.voiceDurationSeconds >= 0 && data.voiceDurationSeconds <= 3600
+        && data.isFavorite is bool
+        && isNonEmptyString(data.backgroundTheme, 1, 60)
+        && isNonEmptyString(data.filterStyle, 1, 60)
+        && data.isSyncedWithCloud is bool
+        && isValidTimestamp(data.createdAt)
+        && isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidJournalEntry(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'title', 'content', 'moodId', 'dateKey',
+          'memoryTimestamp', 'locationOrMoment', 'isFavorite', 'isPrivateLocked',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'title', 'content', 'moodId', 'dateKey',
+          'memoryTimestamp', 'locationOrMoment', 'isFavorite', 'isPrivateLocked',
+          'createdAt', 'updatedAt'
+        ])
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && isNonEmptyString(data.title, 1, 120)
+        && isNonEmptyString(data.content, 1, 6000)
+        && data.moodId in ['romantic', 'peaceful', 'grateful', 'nostalgic', 'excited', 'melancholic']
+        && data.dateKey is string && data.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.memoryTimestamp is int && data.memoryTimestamp > 0
+        && isStringMax(data.locationOrMoment, 100)
+        && data.isFavorite is bool
+        && data.isPrivateLocked is bool
+        && isValidTimestamp(data.createdAt)
+        && isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidFavorite(data) {
+      return data.keys().hasOnly([
+          'quoteId', 'title', 'text', 'author', 'category', 'sourceLabel', 'kind', 'createdAt'
+        ])
+        && isNonEmptyString(data.quoteId, 1, 120)
+        && isStringMax(data.title, 200)
+        && isStringMax(data.text, 2000)
+        && isStringMax(data.author, 120)
+        && isStringMax(data.category, 80)
+        && isStringMax(data.sourceLabel, 80)
+        && data.kind in ['CURATED', 'SAVED']
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidReminder(data) {
+      return data.keys().hasOnly([
+          'title', 'note', 'targetTimestamp', 'reminderType', 'isCompleted',
+          'isNotificationEnabled', 'createdAt'
+        ])
+        && isNonEmptyString(data.title, 1, 200)
+        && isStringMax(data.note, 1000)
+        && data.targetTimestamp is int
+        && isNonEmptyString(data.reminderType, 1, 60)
+        && data.isCompleted is bool
+        && data.isNotificationEnabled is bool
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidMusicTrack(data) {
+      return data.keys().hasOnly(['title', 'artist', 'filePath', 'presetKey', 'addedBy', 'createdAt'])
+        && isNonEmptyString(data.title, 1, 150)
+        && isStringMax(data.artist, 150)
+        && isStringMax(data.filePath, 600)
+        && (!('presetKey' in data) || isNullableStringMax(data.presetKey, 100))
+        && isNonEmptyString(data.addedBy, 1, 100)
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidEngagementNotif(data) {
+      return data.keys().hasOnly(['type', 'quoteDocId', 'quotePreview', 'actorName', 'message', 'isRead', 'createdAt'])
+        && data.type in ['LIKE', 'COMMENT', 'APPROVED', 'MODERATION']
+        && isStringMax(data.quoteDocId, 120)
+        && isStringMax(data.quotePreview, 300)
+        && isNonEmptyString(data.actorName, 1, 120)
+        && isNonEmptyString(data.message, 1, 500)
+        && data.isRead is bool
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidTimeCapsule(data) {
+      return data.keys().hasOnly(['title', 'message', 'author', 'unlockAt', 'createdAt'])
+        && isNonEmptyString(data.title, 1, 150)
+        && isNonEmptyString(data.message, 1, 3000)
+        && isNonEmptyString(data.author, 1, 100)
+        && data.unlockAt is int
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidCountdown(data) {
+      return data.keys().hasOnly(['title', 'emoji', 'targetTimestamp', 'createdAt'])
+        && isNonEmptyString(data.title, 1, 150)
+        && isNonEmptyString(data.emoji, 1, 16)
+        && data.targetTimestamp is int
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidLoveJar(data) {
+      return data.keys().hasOnly(['reason', 'createdAt'])
+        && isNonEmptyString(data.reason, 1, 500)
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidPurchase(data) {
+      return data.keys().hasOnly(['title', 'amountDisplay', 'source', 'createdAt'])
+        && isNonEmptyString(data.title, 1, 150)
+        && isNonEmptyString(data.amountDisplay, 1, 60)
+        && isNonEmptyString(data.source, 1, 60)
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidAdminSettings(data) {
+      return data.submissionsEnabled is bool
+        && data.dailyLimitPerUser is int && data.dailyLimitPerUser >= 1 && data.dailyLimitPerUser <= 50
+        && data.minCharCount is int && data.minCharCount >= 1 && data.minCharCount <= 200
+        && data.maxCharCount is int && data.maxCharCount >= 20 && data.maxCharCount <= 2000
+        && data.autoApprove is bool
+        && data.maintenanceMode is bool
+        && isStringMax(data.maintenanceTitle, 120)
+        && isStringMax(data.maintenanceMessage, 600)
+        && isStringMax(data.maintenanceEstimatedTime, 80)
+        && data.allowUserRegistration is bool
+        && data.allowCustomMusic is bool
+        && data.allowCommunityComments is bool
+        && isStringMax(data.announcementBannerText, 300)
+        && data.adsEnabled is bool
+        && data.rewardCoinsPerAd is int && data.rewardCoinsPerAd >= 0 && data.rewardCoinsPerAd <= 500
+        && data.interstitialCooldownSeconds is int && data.interstitialCooldownSeconds >= 0 && data.interstitialCooldownSeconds <= 3600
+        && data.adBlockerGuardEnabled is bool
+        && data.chatEnabled is bool
+        && isStringMax(data.chatClosedMessage, 300)
+        && data.chatAllowGuests is bool
+        && data.chatRequireApproval is bool
+        && data.chatSlowModeSeconds is int && data.chatSlowModeSeconds >= 0 && data.chatSlowModeSeconds <= 600
+        && data.chatMaxCharCount is int && data.chatMaxCharCount >= 20 && data.chatMaxCharCount <= 1000
+        && isStringMax(data.chatBlockedWordsCsv, 2000)
+        && isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAdminQuote(data) {
+      return data.keys().hasOnly(['text', 'author', 'sectionId', 'subCategory', 'tagsCsv', 'isFeaturedDaily', 'createdAt'])
+        && isNonEmptyString(data.text, 5, 1000)
+        && isNonEmptyString(data.author, 1, 100)
+        && data.sectionId in ['ask', 'romantik', 'gunaydin', 'gece']
+        && isStringMax(data.subCategory, 80)
+        && isStringMax(data.tagsCsv, 300)
+        && data.isFeaturedDaily is bool
+        && isValidTimestamp(data.createdAt);
+    }
+
+    function isValidBroadcast(data) {
+      return data.keys().hasOnly(['title', 'message', 'category', 'emoji', 'sentBy', 'sentAt'])
+        && isNonEmptyString(data.title, 1, 150)
+        && isNonEmptyString(data.message, 1, 2000)
+        && isNonEmptyString(data.category, 1, 60)
+        && isNonEmptyString(data.emoji, 1, 16)
+        && isNonEmptyString(data.sentBy, 1, 80)
+        && isValidTimestamp(data.sentAt);
+    }
+
+    function isValidSupportMessageCreate(data) {
+      return data.keys().hasOnly([
+          'userId', 'senderName', 'senderEmail', 'topic', 'message',
+          'adminReply', 'status', 'isReadByAdmin', 'createdAt', 'repliedAt'
+        ])
+        && data.userId == request.auth.uid
+        && isNonEmptyString(data.senderName, 1, 100)
+        && isStringMax(data.senderEmail, 160)
+        && isNonEmptyString(data.topic, 1, 80)
+        && isNonEmptyString(data.message, 5, 2000)
+        && (!('adminReply' in data) || data.adminReply == null)
+        && data.status == 'PENDING'
+        && data.isReadByAdmin == false
+        && isValidTimestamp(data.createdAt)
+        && (!('repliedAt' in data) || data.repliedAt == null);
+    }
+
+    function isValidCommunityQuoteCreate(data) {
+      return data.keys().hasOnly([
+          'authorUid', 'text', 'author', 'category', 'submitterName',
+          'status', 'likesCount', 'moderationNote', 'createdAt', 'approvedAt'
+        ])
+        && data.authorUid == request.auth.uid
+        && isNonEmptyString(data.text, 5, 1000)
+        && isNonEmptyString(data.author, 1, 100)
+        && isNonEmptyString(data.category, 1, 80)
+        && isNonEmptyString(data.submitterName, 1, 100)
+        && data.status in ['PENDING', 'APPROVED']
+        && data.likesCount == 0
+        && (!('moderationNote' in data) || data.moderationNote == null)
+        && isValidTimestamp(data.createdAt)
+        && (!('approvedAt' in data) || isNullableTimestamp(data.approvedAt));
+    }
+
+    function isValidChatMessageCreate(data) {
+      return data.keys().hasOnly([
+          'roomId', 'senderUid', 'senderName', 'senderRole', 'isPremiumSender', 'vipPlanName',
+          'message', 'replyToMessageId', 'replyToSenderName', 'replyToSnippet',
+          'status', 'isPinned', 'likesCount', 'moderationNote', 'createdAt'
+        ])
+        && data.roomId in ['genel', 'siir_soz', 'tavsiye', 'gece']
+        && data.senderUid == request.auth.uid
+        && isNonEmptyString(data.senderName, 1, 80)
+        && (data.senderRole == 'USER' || (data.senderRole == 'ADMIN' && isAdmin()))
+        && data.isPremiumSender is bool
+        && isStringMax(data.vipPlanName, 80)
+        && isNonEmptyString(data.message, 2, 600)
+        && (!('replyToMessageId' in data) || isNullableStringMax(data.replyToMessageId, 120))
+        && (!('replyToSenderName' in data) || isNullableStringMax(data.replyToSenderName, 80))
+        && (!('replyToSnippet' in data) || isNullableStringMax(data.replyToSnippet, 120))
+        && (
+          (isAdmin() && data.status in ['PUBLISHED', 'PENDING']) ||
+          (!isAdmin() && data.status in ['PUBLISHED', 'PENDING'] && data.isPinned == false)
+        )
+        && data.isPinned is bool
+        && data.likesCount == 0
+        && (!('moderationNote' in data) || data.moderationNote == null)
+        && isValidTimestamp(data.createdAt);
+    }
+
+    // ===============================================================
+    // User Private Documents & Subcollections
+    // ===============================================================
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isOwner(userId) && isValidUserCreate(request.resource.data, userId);
+      allow update: if isValidId(userId) && (
+        (isOwner(userId) && isValidUserOwnerUpdate(request.resource.data, resource.data)) ||
+        (isAdmin() && isValidUserAdminModerationUpdate(request.resource.data, resource.data))
+      );
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+
+      match /notes/{noteId} {
+        allow get: if isValidId(userId) && isValidId(noteId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(noteId) && isOwner(userId) && isValidNote(request.resource.data);
+        allow update: if isValidId(userId) && isValidId(noteId) && isOwner(userId)
+          && isValidNote(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isValidId(userId) && isValidId(noteId) && isOwner(userId);
+      }
+
+      match /journal_entries/{entryId} {
+        allow get: if isValidId(userId) && isValidId(entryId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(entryId) && isOwner(userId)
+          && isValidJournalEntry(request.resource.data, userId);
+        allow update: if isValidId(userId) && isValidId(entryId) && isOwner(userId)
+          && isValidJournalEntry(request.resource.data, userId)
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'title', 'content', 'moodId', 'dateKey', 'memoryTimestamp',
+            'locationOrMoment', 'isFavorite', 'isPrivateLocked', 'updatedAt'
+          ]);
+        allow delete: if isValidId(userId) && isValidId(entryId) && isOwner(userId);
+      }
+
+      match /favorites/{favId} {
+        allow get: if isValidId(userId) && isValidId(favId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(favId) && isOwner(userId) && isValidFavorite(request.resource.data);
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(favId) && isOwner(userId);
+      }
+
+      match /reminders/{reminderId} {
+        allow get: if isValidId(userId) && isValidId(reminderId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(reminderId) && isOwner(userId) && isValidReminder(request.resource.data);
+        allow update: if isValidId(userId) && isValidId(reminderId) && isOwner(userId)
+          && isValidReminder(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isValidId(userId) && isValidId(reminderId) && isOwner(userId);
+      }
+
+      match /music_tracks/{trackId} {
+        allow get: if isValidId(userId) && isValidId(trackId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(trackId) && isOwner(userId) && isValidMusicTrack(request.resource.data);
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(trackId) && isOwner(userId);
+      }
+
+      match /notifications/{notifId} {
+        allow get: if isValidId(userId) && isValidId(notifId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(notifId) && isOwner(userId) && isValidEngagementNotif(request.resource.data);
+        allow update: if isValidId(userId) && isValidId(notifId) && isOwner(userId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])
+          && request.resource.data.isRead is bool;
+        allow delete: if isValidId(userId) && isValidId(notifId) && isOwner(userId);
+      }
+
+      match /time_capsules/{capsuleId} {
+        allow get: if isValidId(userId) && isValidId(capsuleId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(capsuleId) && isOwner(userId) && isValidTimeCapsule(request.resource.data);
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(capsuleId) && isOwner(userId);
+      }
+
+      match /countdowns/{countdownId} {
+        allow get: if isValidId(userId) && isValidId(countdownId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(countdownId) && isOwner(userId) && isValidCountdown(request.resource.data);
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(countdownId) && isOwner(userId);
+      }
+
+      match /love_jar/{itemId} {
+        allow get: if isValidId(userId) && isValidId(itemId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(itemId) && isOwner(userId) && isValidLoveJar(request.resource.data);
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(itemId) && isOwner(userId);
+      }
+
+      match /purchases/{txId} {
+        allow get: if isValidId(userId) && isValidId(txId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(txId) && isOwner(userId) && isValidPurchase(request.resource.data);
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(txId) && isOwner(userId);
+      }
+    }
+
+    // ===============================================================
+    // Public Profiles (PII-Free Chat Cards & Premium Badges)
+    // ===============================================================
+    match /public_profiles/{userId} {
+      allow get: if isValidId(userId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(userId) && (isOwner(userId) || isAdmin()) && isValidPublicProfileCreate(request.resource.data, userId);
+      allow update: if isValidId(userId) && (
+        (
+          isOwner(userId)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'isBlocked', 'isMutedInChat'])
+          && (request.resource.data.role == resource.data.role || isAdmin())
+          && isNonEmptyString(request.resource.data.displayName, 1, 100)
+          && isStringMax(request.resource.data.partnerName, 100)
+          && request.resource.data.isPremium is bool
+          && isStringMax(request.resource.data.vipPlanName, 100)
+          && request.resource.data.sharedQuotesCount is int && request.resource.data.sharedQuotesCount >= 0
+          && request.resource.data.receivedHeartsCount is int && request.resource.data.receivedHeartsCount >= 0
+          && isValidTimestamp(request.resource.data.updatedAt)
+        ) ||
+        (
+          isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBlocked', 'isMutedInChat', 'role', 'updatedAt'])
+          && request.resource.data.isBlocked is bool
+          && request.resource.data.isMutedInChat is bool
+          && request.resource.data.role in ['USER', 'ADMIN']
+          && isValidTimestamp(request.resource.data.updatedAt)
+        )
+      );
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    // ===============================================================
+    // Admin Lookup Table
+    // ===============================================================
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && (
+        isAdmin() ||
+        (
+          isOwner(userId) &&
+          'email_verified' in request.auth.token &&
+          request.auth.token.email_verified == true &&
+          'email' in request.auth.token &&
+          request.auth.token.email == 'ferhat.krnn65@gmail.com'
+        )
+      ) && request.resource.data.uid == userId && isValidTimestamp(request.resource.data.createdAt);
+      allow update, delete: if isValidId(userId) && isAdmin();
+    }
+
+    // ===============================================================
+    // Global Config, Admin Quotes & Broadcasts
+    // ===============================================================
+    match /app_config/{configId} {
+      allow get: if isValidId(configId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(configId) && isAdmin() && isValidAdminSettings(request.resource.data);
+      allow delete: if isValidId(configId) && isAdmin();
+    }
+
+    match /admin_quotes/{quoteId} {
+      allow get: if isValidId(quoteId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(quoteId) && isAdmin() && isValidAdminQuote(request.resource.data);
+      allow update: if isValidId(quoteId) && isAdmin()
+        && isValidAdminQuote(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isValidId(quoteId) && isAdmin();
+    }
+
+    match /broadcasts/{broadcastId} {
+      allow get: if isValidId(broadcastId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(broadcastId) && isAdmin() && isValidBroadcast(request.resource.data);
+      allow update: if false;
+      allow delete: if isValidId(broadcastId) && isAdmin();
+    }
+
+    // ===============================================================
+    // Two-Way Support Messages (Private Owner + Admin)
+    // ===============================================================
+    match /support_messages/{msgId} {
+      allow get: if isValidId(msgId) && (isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidId(msgId) && isSignedIn() && isValidSupportMessageCreate(request.resource.data);
+      allow update: if isValidId(msgId) && isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adminReply', 'status', 'isReadByAdmin', 'repliedAt'])
+        && (!('adminReply' in request.resource.data) || isNullableStringMax(request.resource.data.adminReply, 2000))
+        && request.resource.data.status in ['PENDING', 'REPLIED']
+        && request.resource.data.isReadByAdmin is bool
+        && (!('repliedAt' in request.resource.data) || isNullableTimestamp(request.resource.data.repliedAt));
+      allow delete: if isValidId(msgId) && isAdmin();
+    }
+
+    // ===============================================================
+    // Community Quotes, Comments & Atomic Likes
+    // ===============================================================
+    match /community_quotes/{quoteId} {
+      allow get: if isValidId(quoteId) && (
+        isAdmin() ||
+        (isSignedIn() && (resource.data.status == 'APPROVED' || resource.data.authorUid == request.auth.uid))
+      );
+      allow list: if isAdmin() || (
+        isSignedIn() && (resource.data.status == 'APPROVED' || resource.data.authorUid == request.auth.uid)
+      );
+      allow create: if isValidId(quoteId) && isSignedIn() && isValidCommunityQuoteCreate(request.resource.data);
+      allow update: if isValidId(quoteId) && (
+        (
+          isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'moderationNote', 'approvedAt', 'text', 'author', 'category'])
+          && request.resource.data.status in ['PENDING', 'APPROVED', 'REJECTED']
+          && (!('moderationNote' in request.resource.data) || isNullableStringMax(request.resource.data.moderationNote, 500))
+          && (!('approvedAt' in request.resource.data) || isNullableTimestamp(request.resource.data.approvedAt))
+        ) ||
+        (
+          isSignedIn()
+          && resource.data.status == 'APPROVED'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
+          && (
+            (
+              !exists(/databases/$(database)/documents/community_quotes/$(quoteId)/likes/$(request.auth.uid))
+              && existsAfter(/databases/$(database)/documents/community_quotes/$(quoteId)/likes/$(request.auth.uid))
+              && request.resource.data.likesCount == resource.data.likesCount + 1
+            ) || (
+              exists(/databases/$(database)/documents/community_quotes/$(quoteId)/likes/$(request.auth.uid))
+              && !existsAfter(/databases/$(database)/documents/community_quotes/$(quoteId)/likes/$(request.auth.uid))
+              && request.resource.data.likesCount == resource.data.likesCount - 1
+              && request.resource.data.likesCount >= 0
+            )
+          )
+        )
+      );
+      allow delete: if isValidId(quoteId) && (isAdmin() || (isSignedIn() && resource.data.authorUid == request.auth.uid));
+
+      match /comments/{commentId} {
+        allow get: if isValidId(quoteId) && isValidId(commentId) && isSignedIn();
+        allow list: if isValidId(quoteId) && isSignedIn();
+        allow create: if isValidId(quoteId) && isValidId(commentId) && isSignedIn()
+          && request.resource.data.keys().hasOnly(['authorUid', 'authorName', 'commentText', 'createdAt'])
+          && request.resource.data.authorUid == request.auth.uid
+          && isNonEmptyString(request.resource.data.authorName, 1, 100)
+          && isNonEmptyString(request.resource.data.commentText, 2, 1000)
+          && isValidTimestamp(request.resource.data.createdAt);
+        allow update: if false;
+        allow delete: if isValidId(quoteId) && isValidId(commentId) && (
+          isAdmin() || (isSignedIn() && resource.data.authorUid == request.auth.uid)
+        );
+      }
+
+      match /likes/{userId} {
+        allow get: if isValidId(quoteId) && isValidId(userId) && isSignedIn();
+        allow list: if isValidId(quoteId) && isSignedIn();
+        allow create: if isValidId(quoteId) && isValidId(userId) && isOwner(userId)
+          && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+          && request.resource.data.uid == userId
+          && isValidTimestamp(request.resource.data.createdAt);
+        allow update: if false;
+        allow delete: if isValidId(quoteId) && isValidId(userId) && isOwner(userId);
+      }
+    }
+
+    // ===============================================================
+    // Community Chat (Live Stream + Paginated Mesaj Geçmişi + Moderation)
+    // ===============================================================
+    match /chat_messages/{messageId} {
+      allow get: if isValidId(messageId) && (
+        isAdmin() ||
+        (isSignedIn() && (resource.data.status == 'PUBLISHED' || resource.data.senderUid == request.auth.uid))
+      );
+      allow list: if isAdmin() || (
+        isSignedIn() && (resource.data.status == 'PUBLISHED' || resource.data.senderUid == request.auth.uid)
+      );
+      allow create: if isValidId(messageId)
+        && isSignedIn()
+        && (isAdmin() || isUserChatActive(request.auth.uid))
+        && isValidChatMessageCreate(request.resource.data);
+      allow update: if isValidId(messageId) && (
+        (
+          isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'isPinned', 'moderationNote'])
+          && request.resource.data.status in ['PUBLISHED', 'PENDING', 'HIDDEN']
+          && request.resource.data.isPinned is bool
+          && (!('moderationNote' in request.resource.data) || isNullableStringMax(request.resource.data.moderationNote, 300))
+        ) ||
+        (
+          isSignedIn()
+          && resource.data.status == 'PUBLISHED'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
+          && (
+            (
+              !exists(/databases/$(database)/documents/chat_messages/$(messageId)/likes/$(request.auth.uid))
+              && existsAfter(/databases/$(database)/documents/chat_messages/$(messageId)/likes/$(request.auth.uid))
+              && request.resource.data.likesCount == resource.data.likesCount + 1
+            ) || (
+              exists(/databases/$(database)/documents/chat_messages/$(messageId)/likes/$(request.auth.uid))
+              && !existsAfter(/databases/$(database)/documents/chat_messages/$(messageId)/likes/$(request.auth.uid))
+              && request.resource.data.likesCount == resource.data.likesCount - 1
+              && request.resource.data.likesCount >= 0
+            )
+          )
+        )
+      );
+      allow delete: if isValidId(messageId) && (
+        isAdmin() || (isSignedIn() && resource.data.senderUid == request.auth.uid)
+      );
+
+      match /likes/{userId} {
+        allow get: if isValidId(messageId) && isValidId(userId) && isSignedIn();
+        allow list: if isValidId(messageId) && isSignedIn();
+        allow create: if isValidId(messageId) && isValidId(userId) && isOwner(userId)
+          && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+          && request.resource.data.uid == userId
+          && isValidTimestamp(request.resource.data.createdAt);
+        allow update: if false;
+        allow delete: if isValidId(messageId) && isValidId(userId) && isOwner(userId);
+      }
+    }
+
+    // Global deny-all fallback
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

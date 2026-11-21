@@ -1,0 +1,490 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Authenticated user profile, preferences, love space state, cloud backup metadata, entitlements, and admin moderation flags",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "partnerName": { "type": "string" },
+        "isBlocked": { "type": "boolean" },
+        "isRestricted": { "type": "boolean" },
+        "canSubmitQuotes": { "type": "boolean" },
+        "canComment": { "type": "boolean" },
+        "canUploadMusic": { "type": "boolean" },
+        "canChat": { "type": "boolean" },
+        "restrictionReason": { "type": "string" },
+        "restrictedUntil": { "type": ["integer", "null"] },
+        "isVip": { "type": "boolean" },
+        "vipPlanName": { "type": "string" },
+        "isAdFree": { "type": "boolean" },
+        "hasUnlimitedBackup": { "type": "boolean" },
+        "hasDesignPack": { "type": "boolean" },
+        "hasVipBadgeAndAi": { "type": "boolean" },
+        "loveCoins": { "type": "integer" },
+        "unlockedItemIds": { "type": "array", "items": { "type": "string" } },
+        "totalCoinPurchases": { "type": "integer" },
+        "totalVipOrPackPurchases": { "type": "integer" },
+        "estimatedRevenueTry": { "type": "number" },
+        "themeMode": { "type": "string" },
+        "designTheme": { "type": "string" },
+        "dailyNotifEnabled": { "type": "boolean" },
+        "dailyNotifHour": { "type": "integer" },
+        "dailyNotifMinute": { "type": "integer" },
+        "dailyNotifTone": { "type": "string" },
+        "loveCounterMyName": { "type": "string" },
+        "loveCounterPartnerName": { "type": "string" },
+        "loveCounterStartDate": { "type": "integer" },
+        "loveCounterTitle": { "type": "string" },
+        "redeemedCouponIds": { "type": "array", "items": { "type": "string" } },
+        "doneBucketIds": { "type": "array", "items": { "type": "string" } },
+        "readBroadcastIds": { "type": "array", "items": { "type": "string" } },
+        "ourSongTitle": { "type": "string" },
+        "ourSongArtist": { "type": "string" },
+        "loveStreak": { "type": "integer" },
+        "streakLastDay": { "type": "string" },
+        "todayMoodLabel": { "type": "string" },
+        "todayMoodEmoji": { "type": "string" },
+        "todayMoodScore": { "type": "integer" },
+        "todayMoodDate": { "type": "string" },
+        "moodCheckInHistoryJson": { "type": "string" },
+        "loveLanguageName": { "type": "string" },
+        "missYouTotalCount": { "type": "integer" },
+        "missYouTodayCount": { "type": "integer" },
+        "missYouDay": { "type": "string" },
+        "truthDareCompletedCount": { "type": "integer" },
+        "lastSyncAt": { "type": "integer" },
+        "syncedNotesCount": { "type": "integer" },
+        "syncedFavsCount": { "type": "integer" },
+        "syncedRemindersCount": { "type": "integer" },
+        "lastBackupJson": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "fullName", "email", "createdAt", "updatedAt"]
+    },
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "PII-free public profile shown in Community Chat profile cards and Premium badges",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "partnerName": { "type": "string" },
+        "role": { "type": "string", "enum": ["USER", "ADMIN"] },
+        "isPremium": { "type": "boolean" },
+        "vipPlanName": { "type": "string" },
+        "isBlocked": { "type": "boolean" },
+        "isMutedInChat": { "type": "boolean" },
+        "sharedQuotesCount": { "type": "integer" },
+        "receivedHeartsCount": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "role", "isPremium", "updatedAt"]
+    },
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Server-verified admin lookup entry",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "createdAt"]
+    },
+    "NoteItem": {
+      "title": "NoteItem",
+      "description": "User-owned romantic love note",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "author": { "type": "string" },
+        "tags": { "type": "string" },
+        "voiceAudioPath": { "type": ["string", "null"] },
+        "voiceDurationSeconds": { "type": "integer" },
+        "isFavorite": { "type": "boolean" },
+        "backgroundTheme": { "type": "string" },
+        "filterStyle": { "type": "string" },
+        "isSyncedWithCloud": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "createdAt", "updatedAt"]
+    },
+    "EmotionalJournalEntryItem": {
+      "title": "EmotionalJournalEntryItem",
+      "description": "Strictly private, date-based emotional memory and love journal entry owned by a single user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "moodId": { "type": "string", "enum": ["romantic", "peaceful", "grateful", "nostalgic", "excited", "melancholic"] },
+        "dateKey": { "type": "string" },
+        "memoryTimestamp": { "type": "integer" },
+        "locationOrMoment": { "type": "string" },
+        "isFavorite": { "type": "boolean" },
+        "isPrivateLocked": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "title",
+        "content",
+        "moodId",
+        "dateKey",
+        "memoryTimestamp",
+        "locationOrMoment",
+        "isFavorite",
+        "isPrivateLocked",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FavoriteQuoteItem": {
+      "title": "FavoriteQuoteItem",
+      "description": "User favorite curated or saved custom quote",
+      "type": "object",
+      "properties": {
+        "quoteId": { "type": "string" },
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "author": { "type": "string" },
+        "category": { "type": "string" },
+        "sourceLabel": { "type": "string" },
+        "kind": { "type": "string", "enum": ["CURATED", "SAVED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quoteId", "kind", "createdAt"]
+    },
+    "ReminderItem": {
+      "title": "ReminderItem",
+      "description": "User romantic reminder or special date",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "note": { "type": "string" },
+        "targetTimestamp": { "type": "integer" },
+        "reminderType": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "isNotificationEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "targetTimestamp", "reminderType", "createdAt"]
+    },
+    "MusicTrackItem": {
+      "title": "MusicTrackItem",
+      "description": "User custom romantic background music metadata",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "artist": { "type": "string" },
+        "filePath": { "type": "string" },
+        "presetKey": { "type": ["string", "null"] },
+        "addedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "filePath", "createdAt"]
+    },
+    "EngagementNotificationItem": {
+      "title": "EngagementNotificationItem",
+      "description": "User in-app engagement notification",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["LIKE", "COMMENT", "APPROVED", "MODERATION"] },
+        "quoteDocId": { "type": "string" },
+        "quotePreview": { "type": "string" },
+        "actorName": { "type": "string" },
+        "message": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "actorName", "message", "isRead", "createdAt"]
+    },
+    "TimeCapsuleItem": {
+      "title": "TimeCapsuleItem",
+      "description": "Future-locked romantic letter",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "author": { "type": "string" },
+        "unlockAt": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "unlockAt", "createdAt"]
+    },
+    "SpecialCountdownItem": {
+      "title": "SpecialCountdownItem",
+      "description": "Couple special event countdown",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "emoji": { "type": "string" },
+        "targetTimestamp": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "targetTimestamp", "createdAt"]
+    },
+    "LoveJarItem": {
+      "title": "LoveJarItem",
+      "description": "Personal reason card in Love Jar",
+      "type": "object",
+      "properties": {
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reason", "createdAt"]
+    },
+    "PurchaseHistoryItem": {
+      "title": "PurchaseHistoryItem",
+      "description": "Store purchase or coin transaction log",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "amountDisplay": { "type": "string" },
+        "source": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "amountDisplay", "source", "createdAt"]
+    },
+    "AdminSettingsDoc": {
+      "title": "AdminSettingsDoc",
+      "description": "Global application settings managed by administrators",
+      "type": "object",
+      "properties": {
+        "submissionsEnabled": { "type": "boolean" },
+        "dailyLimitPerUser": { "type": "integer" },
+        "minCharCount": { "type": "integer" },
+        "maxCharCount": { "type": "integer" },
+        "autoApprove": { "type": "boolean" },
+        "maintenanceMode": { "type": "boolean" },
+        "maintenanceTitle": { "type": "string" },
+        "maintenanceMessage": { "type": "string" },
+        "maintenanceEstimatedTime": { "type": "string" },
+        "allowUserRegistration": { "type": "boolean" },
+        "allowCustomMusic": { "type": "boolean" },
+        "allowCommunityComments": { "type": "boolean" },
+        "announcementBannerText": { "type": "string" },
+        "adsEnabled": { "type": "boolean" },
+        "rewardCoinsPerAd": { "type": "integer" },
+        "interstitialCooldownSeconds": { "type": "integer" },
+        "adBlockerGuardEnabled": { "type": "boolean" },
+        "chatEnabled": { "type": "boolean" },
+        "chatClosedMessage": { "type": "string" },
+        "chatAllowGuests": { "type": "boolean" },
+        "chatRequireApproval": { "type": "boolean" },
+        "chatSlowModeSeconds": { "type": "integer" },
+        "chatMaxCharCount": { "type": "integer" },
+        "chatBlockedWordsCsv": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["submissionsEnabled", "maintenanceMode", "chatEnabled", "updatedAt"]
+    },
+    "AdminQuoteDoc": {
+      "title": "AdminQuoteDoc",
+      "description": "Official quote published by admin",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "author": { "type": "string" },
+        "sectionId": { "type": "string" },
+        "subCategory": { "type": "string" },
+        "tagsCsv": { "type": "string" },
+        "isFeaturedDaily": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "author", "sectionId", "isFeaturedDaily", "createdAt"]
+    },
+    "BroadcastDoc": {
+      "title": "BroadcastDoc",
+      "description": "Admin broadcast announcement",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "category": { "type": "string" },
+        "emoji": { "type": "string" },
+        "sentBy": { "type": "string" },
+        "sentAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "sentBy", "sentAt"]
+    },
+    "SupportMessageDoc": {
+      "title": "SupportMessageDoc",
+      "description": "Two-way user-to-admin support message",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "topic": { "type": "string" },
+        "message": { "type": "string" },
+        "adminReply": { "type": ["string", "null"] },
+        "status": { "type": "string", "enum": ["PENDING", "REPLIED"] },
+        "isReadByAdmin": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "repliedAt": { "type": ["string", "null"], "format": "date-time" }
+      },
+      "required": ["userId", "senderName", "topic", "message", "status", "isReadByAdmin", "createdAt"]
+    },
+    "CommunityQuoteDoc": {
+      "title": "CommunityQuoteDoc",
+      "description": "User-submitted quote in Community Quotes feed",
+      "type": "object",
+      "properties": {
+        "authorUid": { "type": "string" },
+        "text": { "type": "string" },
+        "author": { "type": "string" },
+        "category": { "type": "string" },
+        "submitterName": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "likesCount": { "type": "integer" },
+        "moderationNote": { "type": ["string", "null"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "approvedAt": { "type": ["string", "null"], "format": "date-time" }
+      },
+      "required": ["authorUid", "text", "author", "category", "submitterName", "status", "likesCount", "createdAt"]
+    },
+    "CommunityCommentDoc": {
+      "title": "CommunityCommentDoc",
+      "description": "Comment on a community quote",
+      "type": "object",
+      "properties": {
+        "authorUid": { "type": "string" },
+        "authorName": { "type": "string" },
+        "commentText": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorUid", "authorName", "commentText", "createdAt"]
+    },
+    "ChatMessageDoc": {
+      "title": "ChatMessageDoc",
+      "description": "Real-time and paginated history message in Community Chat rooms",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string", "enum": ["genel", "siir_soz", "tavsiye", "gece"] },
+        "senderUid": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string", "enum": ["USER", "ADMIN"] },
+        "isPremiumSender": { "type": "boolean" },
+        "vipPlanName": { "type": "string" },
+        "message": { "type": "string" },
+        "replyToMessageId": { "type": ["string", "null"] },
+        "replyToSenderName": { "type": ["string", "null"] },
+        "replyToSnippet": { "type": ["string", "null"] },
+        "status": { "type": "string", "enum": ["PUBLISHED", "PENDING", "HIDDEN"] },
+        "isPinned": { "type": "boolean" },
+        "likesCount": { "type": "integer" },
+        "moderationNote": { "type": ["string", "null"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "senderUid", "senderName", "senderRole", "isPremiumSender", "message", "status", "isPinned", "likesCount", "createdAt"]
+    },
+    "LikeMarker": {
+      "title": "LikeMarker",
+      "description": "Per-user atomic like marker document",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Owner-only and admin user records with PII and entitlements"
+    },
+    "/public_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/PublicProfile" },
+      "description": "Public PII-free profile cards and Premium badges for Chat"
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Server-verified admin lookup table"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/NoteItem" },
+      "description": "User love notes"
+    },
+    "/users/{userId}/journal_entries/{entryId}": {
+      "schema": { "$ref": "#/entities/EmotionalJournalEntryItem" },
+      "description": "User private date-based emotional journal memories"
+    },
+    "/users/{userId}/favorites/{favId}": {
+      "schema": { "$ref": "#/entities/FavoriteQuoteItem" },
+      "description": "User favorited quotes"
+    },
+    "/users/{userId}/reminders/{reminderId}": {
+      "schema": { "$ref": "#/entities/ReminderItem" },
+      "description": "User romantic reminders"
+    },
+    "/users/{userId}/music_tracks/{trackId}": {
+      "schema": { "$ref": "#/entities/MusicTrackItem" },
+      "description": "User custom romantic music metadata"
+    },
+    "/users/{userId}/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/EngagementNotificationItem" },
+      "description": "User engagement notifications"
+    },
+    "/users/{userId}/time_capsules/{capsuleId}": {
+      "schema": { "$ref": "#/entities/TimeCapsuleItem" },
+      "description": "User time capsules"
+    },
+    "/users/{userId}/countdowns/{countdownId}": {
+      "schema": { "$ref": "#/entities/SpecialCountdownItem" },
+      "description": "User special countdown events"
+    },
+    "/users/{userId}/love_jar/{itemId}": {
+      "schema": { "$ref": "#/entities/LoveJarItem" },
+      "description": "User love jar reasons"
+    },
+    "/users/{userId}/purchases/{txId}": {
+      "schema": { "$ref": "#/entities/PurchaseHistoryItem" },
+      "description": "User store purchase & reward history"
+    },
+    "/app_config/{configId}": {
+      "schema": { "$ref": "#/entities/AdminSettingsDoc" },
+      "description": "Global admin-managed app settings"
+    },
+    "/admin_quotes/{quoteId}": {
+      "schema": { "$ref": "#/entities/AdminQuoteDoc" },
+      "description": "Official admin quotes"
+    },
+    "/broadcasts/{broadcastId}": {
+      "schema": { "$ref": "#/entities/BroadcastDoc" },
+      "description": "Admin announcements"
+    },
+    "/support_messages/{msgId}": {
+      "schema": { "$ref": "#/entities/SupportMessageDoc" },
+      "description": "Private two-way admin support messages"
+    },
+    "/community_quotes/{quoteId}": {
+      "schema": { "$ref": "#/entities/CommunityQuoteDoc" },
+      "description": "Community shared romantic quotes"
+    },
+    "/community_quotes/{quoteId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/CommunityCommentDoc" },
+      "description": "Comments on community quotes"
+    },
+    "/community_quotes/{quoteId}/likes/{userId}": {
+      "schema": { "$ref": "#/entities/LikeMarker" },
+      "description": "Unique like markers for community quotes"
+    },
+    "/chat_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessageDoc" },
+      "description": "Community chat messages with live updates and paginated history"
+    },
+    "/chat_messages/{messageId}/likes/{userId}": {
+      "schema": { "$ref": "#/entities/LikeMarker" },
+      "description": "Unique like markers for chat messages"
+    }
+  }
+}

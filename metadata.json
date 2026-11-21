@@ -1,0 +1,6 @@
+{
+  "name": "Aşka Dair",
+  "description": "Zarif ve modern aşk sözleri, görsel hikaye kartı stüdyosu, çift alanı, sesli notlar, sohbet ve AI ilişki asistanı.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
